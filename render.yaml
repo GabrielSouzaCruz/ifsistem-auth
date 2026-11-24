@@ -3,6 +3,7 @@ services:
     name: ifsistem-auth
     runtime: docker
     plan: free
+    region: ohio
     healthCheckPath: /health
     envVars:
       - key: SPRING_PROFILES_ACTIVE
@@ -13,9 +14,8 @@ services:
         sync: false
       - key: DB_PASSWORD
         sync: false
-      # No Supabase use ifsistem_auth: o schema "auth" e reservado (ver README).
       - key: DB_SCHEMA
-        sync: false
+        value: ifsistem_auth
       - key: AUTH_ISSUER
         value: https://ifsistem-auth.onrender.com
       - key: AUTH_RSA_PRIVATE_KEY
@@ -23,7 +23,7 @@ services:
       - key: AUTH_RSA_PUBLIC_KEY
         sync: false
       - key: PORTAL_URL
-        sync: false
+        value: https://ifsistem-portal.onrender.com
       - key: ADMIN_CPF
         sync: false
       - key: ADMIN_SENHA

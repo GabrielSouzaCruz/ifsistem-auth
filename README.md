@@ -22,14 +22,21 @@ Testes: `./mvnw test`.
 
 ## Produção (Render)
 
-Profile `render`. Variáveis de ambiente:
+### Deploy pelo Blueprint
+
+1. No Render: **New → Blueprint** e escolha este repositório (lê o `render.yaml`: serviço `ifsistem-auth`, Docker, plano free, região Ohio).
+2. Preencha as variáveis `sync: false`: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `AUTH_RSA_PRIVATE_KEY`, `AUTH_RSA_PUBLIC_KEY`, `ADMIN_CPF`, `ADMIN_SENHA`, `ADMIN_EMAIL`.
+3. As demais (`SPRING_PROFILES_ACTIVE`, `DB_SCHEMA`, `AUTH_ISSUER`, `PORTAL_URL`, `JAVA_OPTS`) já vêm com valor fixo no Blueprint.
+4. Gere as chaves RSA com os comandos `openssl` abaixo.
+
+Variáveis de ambiente do profile `render`:
 
 | Variável | Obrigatória | Descrição |
 |---|---|---|
 | `SPRING_PROFILES_ACTIVE` | sim | `render` |
 | `PORT` | sim | Definida pelo próprio Render |
 | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | sim | Mesmo Supabase do aproveitamento, pelo **Session pooler** (porta 5432) |
-| `DB_SCHEMA` | **sim no Supabase** | Schema das tabelas. Padrão `auth`; veja o aviso abaixo |
+| `DB_SCHEMA` | não | Schema das tabelas. Padrão `ifsistem_auth` (criado pelo Flyway); veja o aviso abaixo |
 | `AUTH_ISSUER` | sim | URL pública, ex.: `https://ifsistem-auth.onrender.com` |
 | `AUTH_RSA_PRIVATE_KEY` | sim | PEM PKCS#8 (`BEGIN PRIVATE KEY`) |
 | `AUTH_RSA_PUBLIC_KEY` | sim | PEM X.509 (`BEGIN PUBLIC KEY`), par da anterior |
@@ -39,7 +46,7 @@ Profile `render`. Variáveis de ambiente:
 | `JAVA_OPTS` | não | Ex.: `-XX:MaxRAMPercentage=75` |
 
 > **Supabase e o schema `auth`:** o Supabase já tem um schema `auth`, do serviço de login dele, no qual o usuário
-> `postgres` não pode criar tabelas. Com o padrão, o Flyway falha na subida. Use `DB_SCHEMA=ifsistem_auth`; o Flyway cria
+> `postgres` não pode criar tabelas. Por isso o padrão é `ifsistem_auth`; não use `auth`. O Flyway cria
 > o schema.
 
 Gerar a chave (fora da pasta do repositório; nunca versione):
