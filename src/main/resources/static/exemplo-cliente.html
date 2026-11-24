@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Exemplo de cliente · IFSISTEM</title>
+    <link rel="icon" type="image/png" href="img/favicon.png">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="sem-sessao">
+<main class="login">
+    <p class="sobretitulo">Exemplo de integração</p>
+    <div id="aviso" class="aviso" role="alert" hidden></div>
+
+    <section id="anonimo" class="card" hidden>
+        <h1>Você não entrou</h1>
+        <button id="entrar" class="btn">Entrar com IFSISTEM</button>
+    </section>
+
+    <section id="logado" class="card" hidden>
+        <h1>Olá, <span id="nome"></span></h1>
+        <dl class="dados">
+            <dt>Perfil</dt><dd id="perfil"></dd>
+            <dt>CPF</dt><dd id="cpf"></dd>
+            <dt>ID</dt><dd id="id"></dd>
+        </dl>
+        <button id="sair" class="btn btn-sec">Sair</button>
+    </section>
+</main>
+
+<script src="ifsistem-sso.js"></script>
+<script>
+    const $ = id => document.getElementById(id);
+    const estaPagina = location.origin + location.pathname;
+
+    // Num sistema real: authUrl fixo (https://ifsistem-auth.onrender.com) e o clientId cadastrado.
+    IfsistemSSO.init({
+        authUrl: location.origin,
+        clientId: 'exemplo',
+        redirectUri: estaPagina,
+        postLogoutRedirectUri: estaPagina
+    });
+
+    $('entrar').onclick = () => IfsistemSSO.login();
+    $('sair').onclick = () => IfsistemSSO.logout();
+
+    (async () => {
+        try {
+            await IfsistemSSO.handleCallback();
+            await IfsistemSSO.getToken(); // renova ou descarta um token vencido
+        } catch (e) {
+            $('aviso').textContent = e.message;
+            $('aviso').hidden = false;
+        }
+        const u = IfsistemSSO.usuario();
+        $('anonimo').hidden = !!u;
+        $('logado').hidden = !u;
+        if (u) for (const campo of ['nome', 'perfil', 'cpf', 'id']) $(campo).textContent = u[campo];
+    })();
+</script>
+</body>
+</html>

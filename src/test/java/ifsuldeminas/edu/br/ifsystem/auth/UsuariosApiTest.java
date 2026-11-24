@@ -1,0 +1,154 @@
+package ifsuldeminas.edu.br.ifsystem.auth;
+
+import com.jayway.jsonpath.JsonPath;
+import ifsuldeminas.edu.br.ifsystem.auth.usuario.domain.Perfil;
+import ifsuldeminas.edu.br.ifsystem.auth.usuario.domain.StatusUsuario;
+import ifsuldeminas.edu.br.ifsystem.auth.usuario.domain.Usuario;
+import ifsuldeminas.edu.br.ifsystem.auth.usuario.repository.UsuarioRepository;
+import ifsuldeminas.edu.br.ifsystem.auth.usuario.service.UsuarioService;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+
+import java.util.List;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+class UsuariosApiTest {
+    @Autowired
+    private MockMvc mvc;
+    @Autowired
+    private UsuarioService usuarios;
+    @Autowired
+    private UsuarioRepository repositorio;
+
+    private ResultActions chamar(MockHttpServletRequestBuilder req, String bearer) throws Exception {
+        return mvc.perform(req.header("Authorization", bearer));
+    }
+
+    private static MockHttpServletRequestBuilder json(MockHttpServletRequestBuilder req, String corpo) {
+        return req.contentType(MediaType.APPLICATION_JSON).content(corpo);
+    }
+
+    private String servidor() throws Exception {
+        return Apoio.bearer(mvc, Apoio.criar(usuarios, Perfil.SERVIDOR));
+    }
+
+    @Test
+    void semTokenOuComTokenInvalidoDa401() throws Exception {
+        mvc.perform(get("/usuarios")).andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401));
+        chamar(get("/usuarios"), "Bearer lixo.lixo.lixo").andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void soServidorAcessa() throws Exception {
+        chamar(get("/usuarios"), servidor()).andExpect(status().isOk());
+        for (Perfil p : List.of(Perfil.ALUNO, Perfil.PROFESSOR)) {
+            String bearer = Apoio.bearer(mvc, Apoio.criar(usuarios, p));
+            chamar(get("/usuarios"), bearer).andExpect(status().isForbidden());
+            chamar(json(post("/usuarios"), "{}"), bearer).andExpect(status().isForbidden());
+            chamar(delete("/usuarios/" + UUID.randomUUID()), bearer).andExpect(status().isForbidden());
+        }
+    }
+
+    @Test
+    void idTokenNaoVale() throws Exception {
+        Usuario u = Apoio.criar(usuarios, Perfil.SERVIDOR);
+        String idToken = Apoio.campo(Apoio.tokens(mvc, new MockHttpSession(), u.getCpf()), "id_token");
+        chamar(get("/usuarios"), "Bearer " + idToken).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void servidorInativadoOuRebaixadoPerdeOAcessoAntesDoTokenVencer() throws Exception {
+        Usuario u = Apoio.criar(usuarios, Perfil.SERVIDOR);
+        String bearer = Apoio.bearer(mvc, u);
+        u.alterarPerfil(Perfil.PROFESSOR);
+        u = repositorio.save(u);
+        chamar(get("/usuarios"), bearer).andExpect(status().isForbidden());
+        u.definirAtivo(false);
+        repositorio.save(u);
+        chamar(get("/usuarios"), bearer).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void crudCompleto() throws Exception {
+        String bearer = servidor();
+        String cpf = Apoio.cpf();
+        String criado = chamar(json(post("/usuarios"), """
+                {"cpf":"%s","nome":"Prof Teste","email":"%s","senha":"%s","perfil":"PROFESSOR"}
+                """.formatted(cpf, Apoio.email(), Apoio.SENHA)), bearer)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.perfil").value("PROFESSOR"))
+                .andExpect(jsonPath("$.ativo").value(true))
+                .andExpect(jsonPath("$.senha").doesNotExist())
+                .andReturn().getResponse().getContentAsString();
+        String url = "/usuarios/" + JsonPath.<String>read(criado, "$.id");
+
+        chamar(get(url), bearer).andExpect(status().isOk()).andExpect(jsonPath("$.cpf").value(cpf));
+        String lista = chamar(get("/usuarios?perfil=PROFESSOR"), bearer).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(JsonPath.<List<String>>read(lista, "$[*].perfil")).containsOnly("PROFESSOR");
+
+        chamar(json(put(url), "{\"nome\":\"Novo Nome\",\"email\":\"%s\",\"perfil\":\"SERVIDOR\"}"
+                .formatted(Apoio.email())), bearer)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nome").value("Novo Nome"))
+                .andExpect(jsonPath("$.perfil").value("SERVIDOR"));
+
+        chamar(json(patch(url + "/ativo"), "{\"ativo\":false}"), bearer)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("INATIVO"));
+        chamar(json(patch(url + "/ativo"), "{\"ativo\":true}"), bearer)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ATIVO"));
+
+        chamar(delete(url), bearer).andExpect(status().isNoContent());
+        assertThat(repositorio.findByCpf(cpf).orElseThrow().getStatus()).isEqualTo(StatusUsuario.EXCLUIDO);
+        lista = chamar(get("/usuarios"), bearer).andReturn().getResponse().getContentAsString();
+        assertThat(JsonPath.<List<String>>read(lista, "$[*].cpf")).doesNotContain(cpf);
+    }
+
+    @Test
+    void validacoesDaApi() throws Exception {
+        String bearer = servidor();
+        chamar(json(post("/usuarios"), """
+                {"cpf":"%s","nome":"X","email":"%s","senha":"%s","perfil":"ALUNO"}
+                """.formatted(Apoio.cpf(), Apoio.email(), Apoio.SENHA)), bearer)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("Perfil deve ser PROFESSOR ou SERVIDOR"));
+        chamar(get("/usuarios/" + UUID.randomUUID()), bearer).andExpect(status().isNotFound());
+
+        Usuario a = Apoio.criar(usuarios, Perfil.ALUNO);
+        Usuario b = Apoio.criar(usuarios, Perfil.ALUNO);
+        chamar(json(put("/usuarios/" + a.getId()), "{\"nome\":\"A\",\"email\":\"%s\"}".formatted(b.getEmail())),
+                bearer).andExpect(status().isConflict());
+        chamar(json(put("/usuarios/" + a.getId()), "{\"nome\":\"A\",\"email\":\"%s\",\"perfil\":\"ADMINISTRADOR\"}"
+                .formatted(a.getEmail())), bearer).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void servidorNaoInativaExcluiNemRebaixaASiMesmo() throws Exception {
+        Usuario u = Apoio.criar(usuarios, Perfil.SERVIDOR);
+        String bearer = Apoio.bearer(mvc, u);
+        String url = "/usuarios/" + u.getId();
+        chamar(json(patch(url + "/ativo"), "{\"ativo\":false}"), bearer).andExpect(status().isConflict());
+        chamar(delete(url), bearer).andExpect(status().isConflict());
+        chamar(json(put(url), "{\"nome\":\"A\",\"email\":\"%s\",\"perfil\":\"ALUNO\"}".formatted(u.getEmail())),
+                bearer).andExpect(status().isConflict());
+    }
+}
