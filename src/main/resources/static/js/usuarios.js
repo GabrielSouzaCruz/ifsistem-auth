@@ -66,7 +66,7 @@ function modal({ titulo, mensagem, corpo = '', textoOk = 'Confirmar', perigo = f
             <form class="modal" role="dialog" aria-modal="true" aria-labelledby="${id}" novalidate>
                 <h2 id="${id}">${esc(titulo)}</h2>
                 ${mensagem ? `<p class="modal-msg">${esc(mensagem)}</p>` : ''}
-                <div class="modal-erro" role="alert" hidden></div>
+                <div class="modal-erro modal-erro-form" role="alert" hidden></div>
                 ${corpo}
                 <div class="modal-acoes">
                     <button type="button" class="btn btn-sec" data-modal="cancelar">Cancelar</button>
@@ -151,6 +151,22 @@ async function api(caminho, opcoes = {}) {
 
 /* ---------- Tela ---------- */
 
+const PERFIL_CURTO = { SERVIDOR: 'Servidor' };
+
+/* Hero do topo da tela: rotulo MES DE ANO, titulo, subtitulo e chip do perfil. */
+function hero(titulo, subtitulo) {
+    const agora = new Date();
+    return `
+        <header class="hero">
+            <div>
+                <p class="hero-rotulo">${esc(agora.toLocaleDateString('pt-BR', { month: 'long' }))} de ${agora.getFullYear()}</p>
+                <h1>${esc(titulo)}</h1>
+                <p class="hero-sub">${esc(subtitulo)}</p>
+            </div>
+            <span class="chip-perfil">Servidor</span>
+        </header>`;
+}
+
 function selo(u) {
     const ativo = u.ativo;
     return `<span class="status ${ativo ? 'st-DEFERIDA' : 'st-INDEFERIDA'}">${ativo ? 'Ativo' : 'Inativo'}</span>`;
@@ -168,20 +184,18 @@ function desenharLinhas() {
     const lista = filtrados();
     $('contador').textContent = lista.length;
     $('linhas').innerHTML = lista.length === 0
-        ? '<tr><td colspan="6" class="vazio">Nenhum usuário encontrado.</td></tr>'
+        ? '<tr><td colspan="4" class="vazio">Nenhum usuário encontrado.</td></tr>'
         : lista.map(u => `
             <tr>
-                <td data-rotulo="Nome"><strong>${esc(u.nome)}</strong></td>
-                <td data-rotulo="CPF">${esc(mascararCpf(u.cpf))}</td>
-                <td data-rotulo="E-mail">${esc(u.email)}</td>
-                <td data-rotulo="Perfil">${esc(PERFIL_ROTULO[u.perfil] || u.perfil)}</td>
-                <td data-rotulo="Situação">${selo(u)}</td>
+                <td class="celula-nome" data-rotulo="Nome"><strong>${esc(u.nome)}</strong><span class="sub">${esc(u.email)}</span></td>
+                <td class="nowrap" data-rotulo="Perfil"><span class="valor">${esc(PERFIL_CURTO[u.perfil] || PERFIL_ROTULO[u.perfil] || u.perfil)}<span class="sub">CPF ${esc(mascararCpf(u.cpf))}</span></span></td>
+                <td class="nowrap" data-rotulo="Situação">${selo(u)}</td>
                 <td class="celula-acoes"><span class="acoes-linha">
                     <button type="button" class="btn btn-sec btn-mini" data-acao="editar" data-id="${esc(u.id)}">Editar</button>
                     <button type="button" class="btn btn-sec btn-mini" data-acao="senha" data-id="${esc(u.id)}">Redefinir senha</button>
                     ${u.id === eu.id
                         ? '<span class="muted pequeno">Você</span>'
-                        : `<button type="button" class="btn btn-mini ${u.ativo ? 'btn-perigo' : 'btn-sec'}" data-acao="ativo" data-id="${esc(u.id)}">${u.ativo ? 'Inativar' : 'Ativar'}</button>`}
+                        : `<button type="button" class="btn btn-sec btn-mini" data-acao="ativo" data-id="${esc(u.id)}">${u.ativo ? 'Inativar' : 'Ativar'}</button>`}
                 </span></td>
             </tr>`).join('');
 }
@@ -201,28 +215,31 @@ async function carregar() {
 
 function montarTela() {
     app.innerHTML = `
-        <section class="card card-tabela">
+        ${hero('Usuários', 'Cadastre professores e servidores e cuide dos acessos ao IFSISTEM.')}
+        <section class="card">
             <div class="card-cab">
-                <h3>Usuários <span class="contador" id="contador">0</span></h3>
-                <div class="barra-filtros">
-                    <label class="busca">Buscar por nome ou CPF
-                        <input id="busca" type="search" placeholder="Nome ou CPF" autocomplete="off"></label>
-                    <label>Perfil
-                        <select id="filtro-perfil">
-                            <option value="">Todos</option>
-                            ${Object.keys(PERFIL_ROTULO).map(k => `<option value="${k}">${esc(PERFIL_ROTULO[k])}</option>`).join('')}
-                        </select></label>
-                    <button type="button" class="btn" id="btn-novo">Novo usuário</button>
+                <div>
+                    <h2>Usuários <span class="contador" id="contador">0</span></h2>
+                    <p class="card-sub">Alunos se cadastram sozinhos na tela de login. Aqui a secretaria cria professores e servidores.</p>
                 </div>
+                <button type="button" class="btn" id="btn-novo">Novo usuário</button>
             </div>
-            <div class="tabela-wrap">
+            <div class="filtros">
+                <label>Buscar por nome ou CPF
+                    <input id="busca" type="search" placeholder="Nome ou CPF" autocomplete="off"></label>
+                <label>Perfil
+                    <select id="filtro-perfil">
+                        <option value="">Todos</option>
+                        ${Object.keys(PERFIL_ROTULO).map(k => `<option value="${k}">${esc(PERFIL_ROTULO[k])}</option>`).join('')}
+                    </select></label>
+            </div>
+            <div class="tabela-caixa"><div class="tabela-wrap">
                 <table class="responsiva">
-                    <thead><tr><th>Nome</th><th>CPF</th><th>E-mail</th><th>Perfil</th><th>Situação</th><th><span hidden>Ações</span></th></tr></thead>
+                    <thead><tr><th>Nome</th><th>Perfil</th><th>Situação</th><th><span hidden>Ações</span></th></tr></thead>
                     <tbody id="linhas"></tbody>
                 </table>
-            </div>
-        </section>
-        <p class="muted pequeno">Alunos se cadastram sozinhos na tela de login. Aqui a secretaria cria professores e servidores.</p>`;
+            </div></div>
+        </section>`;
 
     $('busca').oninput = e => { busca = e.target.value; desenharLinhas(); };
     $('filtro-perfil').onchange = e => {
@@ -277,7 +294,7 @@ function novoUsuario() {
         textoOk: 'Criar usuário',
         corpo: `
             <div class="campo"><label for="n-nome">Nome completo</label><input id="n-nome" name="nome" autocomplete="off"></div>
-            <div class="campo-linha">
+            <div class="grade-campos">
                 <div class="campo"><label for="n-cpf">CPF</label><input id="n-cpf" name="cpf" inputmode="numeric" placeholder="000.000.000-00" autocomplete="off"></div>
                 <div class="campo"><label for="n-perfil">Perfil</label>
                     <select id="n-perfil" name="perfil">
@@ -426,7 +443,7 @@ function menuGaveta() {
 function montarMoldura(u, config) {
     document.body.classList.remove('sem-sessao');
     $('usuario-nome').textContent = u.nome;
-    $('usuario-papel').textContent = 'Secretaria';
+    $('usuario-papel').textContent = 'Servidor';
     $('usuario-iniciais').textContent = iniciais(u.nome);
     const agora = new Date();
     $('hoje').textContent = agora.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })
