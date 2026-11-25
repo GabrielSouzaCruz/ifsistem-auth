@@ -190,7 +190,8 @@ Suba o auth na porta 9000 (veja o [README](../README.md)) e o seu sistema com `A
 
 ## 5. Usuários
 
-Os usuários são mantidos no auth, pela API `/usuarios` (somente `SERVIDOR`, com o access token): `GET /usuarios?perfil=`,
-`GET /usuarios/{id}`, `POST /usuarios`, `PUT /usuarios/{id}`, `PATCH /usuarios/{id}/ativo` e `DELETE /usuarios/{id}`
-(exclusão lógica). A migração copiou os usuários do aproveitamento **uma única vez**: contas criadas ou senhas trocadas lá
+Os usuários são mantidos no auth, pela API `/usuarios` (`SERVIDOR` e `ADMINISTRADOR`, com o access token do próprio
+usuário), e qualquer usuário troca a própria senha em `PUT /me/senha`. Busca paginada com filtros, criação com senha
+inicial, ativação/inativação e exclusão lógica, CORS, ciclo de vida da conta e exemplos de `fetch`:
+**[API-USUARIOS.md](API-USUARIOS.md)**. Swagger: `https://ifsistem-auth.onrender.com/swagger-ui.html`. A migração copiou os usuários do aproveitamento **uma única vez**: contas criadas ou senhas trocadas lá
 depois disso não chegam ao auth.
