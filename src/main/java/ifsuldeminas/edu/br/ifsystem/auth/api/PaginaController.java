@@ -52,6 +52,8 @@ public class PaginaController {
     public ResponseEntity<String> login(@RequestParam Map<String, String> params, CsrfToken csrf) {
         if (params.containsKey("erro"))
             return pagina(HttpStatus.OK, htmlLogin, Map.of(), csrf, "CPF ou senha inválidos.", false);
+        if (params.containsKey("expirado"))
+            return pagina(HttpStatus.OK, htmlLogin, Map.of(), csrf, "Sua sessão expirou. Entre novamente.", false);
         if (params.containsKey("cadastrado"))
             return pagina(HttpStatus.OK, htmlLogin, Map.of(), csrf, "Conta criada. Entre com CPF e senha.", true);
         return pagina(HttpStatus.OK, htmlLogin, Map.of(), csrf, "", false);

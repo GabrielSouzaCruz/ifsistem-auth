@@ -27,6 +27,8 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.csrf.CsrfException;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
@@ -130,7 +132,23 @@ class SecurityConfig {
                         .anyRequest().authenticated())
                 .formLogin(f -> f.loginPage("/login").usernameParameter("cpf").passwordParameter("senha")
                         .failureUrl("/login?erro").defaultSuccessUrl("/"))
+                .exceptionHandling(e -> e.accessDeniedHandler(sessaoExpirada()))
                 .build();
+    }
+
+    /**
+     * CSRF invalido ou ausente no POST /login (sessao expirada, aba antiga): volta para o login com aviso.
+     * A sessao nao e tocada, entao uma requisicao de autorizacao salva continua valendo; se a sessao morreu,
+     * o login recomeca do zero. Qualquer outro 403 vai para a pagina de erro.
+     */
+    private static AccessDeniedHandler sessaoExpirada() {
+        return (req, res, ex) -> {
+            if (ex instanceof CsrfException && "POST".equals(req.getMethod())
+                    && (req.getContextPath() + "/login").equals(req.getRequestURI()))
+                res.sendRedirect(req.getContextPath() + "/login?expirado");
+            else
+                res.sendError(HttpServletResponse.SC_FORBIDDEN);
+        };
     }
 
     /** Navegadores dos sistemas cadastrados chamam o token endpoint e a API de outra origem, sem cookies. */

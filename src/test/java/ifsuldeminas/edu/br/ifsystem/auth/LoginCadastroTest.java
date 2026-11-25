@@ -73,10 +73,10 @@ class LoginCadastroTest {
     }
 
     @Test
-    void loginSemCsrfERecusado() throws Exception {
+    void loginSemCsrfERecusadoEVoltaParaLogin() throws Exception {
         Usuario u = Apoio.criar(usuarios, Perfil.ALUNO);
         mvc.perform(post("/login").param("cpf", u.getCpf()).param("senha", Apoio.SENHA))
-                .andExpect(status().isForbidden()).andExpect(unauthenticated());
+                .andExpect(redirectedUrl("/login?expirado")).andExpect(unauthenticated());
     }
 
     @Test
