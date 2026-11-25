@@ -140,3 +140,13 @@ td .btn { white-space: nowrap; }
     #menus .menu { flex-direction: column; flex-wrap: nowrap; }
     .lateral .voltar-portal { grid-column: 1 / -1; }
 }
+
+/* ---------- Conteudo centralizado (mesmo padrao do modulo Salas/Chaves) ----------
+   Cabecalho e rodape seguem em largura total; so a area de conteudo e o aviso centralizam. */
+.conteudo, .aviso { width: 100%; max-width: 1040px; margin-left: auto; margin-right: auto; }
+.conteudo { padding-left: 16px; padding-right: 16px; }
+.aviso { width: calc(100% - 32px); margin-top: 1rem; }
+@media (min-width: 601px) {
+    .conteudo { padding-left: 24px; padding-right: 24px; }
+    .aviso { width: calc(100% - 48px); margin-top: 1.25rem; }
+}
