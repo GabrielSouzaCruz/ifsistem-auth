@@ -43,6 +43,8 @@ Variáveis de ambiente do profile `render`:
 | `PORTAL_URL` | recomendada | Destino de "← Portal IFSISTEM" |
 | `ADMIN_CPF`, `ADMIN_SENHA` | recomendadas | Criam um SERVIDOR na subida se o CPF ainda não existir |
 | `ADMIN_EMAIL` | não | Padrão `secretaria@ifsuldeminas.edu.br` |
+
+**Pool de conexões:** o profile `render` limita o HikariCP a 4 conexões por instância (`minimum-idle=1`, `idle-timeout=60s`, `max-lifetime=10min`). O limite de **15 conexões do Session pooler do Supabase vale para a soma de todos os serviços** (ifsistem-auth + aproveitamento, mais instâncias extras durante um deploy); mantenha a soma dos `maximum-pool-size` abaixo disso.
 | `JAVA_OPTS` | não | Ex.: `-XX:MaxRAMPercentage=75` |
 
 > **Supabase e o schema `auth`:** o Supabase já tem um schema `auth`, do serviço de login dele, no qual o usuário
