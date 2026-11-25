@@ -134,6 +134,10 @@ public class Usuario {
         this.periodo = periodo;
     }
 
+    public void redefinirSenha(String senhaHash) {
+        this.senhaHash = senhaHash;
+    }
+
     public void alterarPerfil(Perfil perfil) {
         this.perfil = perfil;
     }

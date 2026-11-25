@@ -26,6 +26,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -139,6 +140,48 @@ class UsuariosApiTest {
                 bearer).andExpect(status().isConflict());
         chamar(json(put("/usuarios/" + a.getId()), "{\"nome\":\"A\",\"email\":\"%s\",\"perfil\":\"ADMINISTRADOR\"}"
                 .formatted(a.getEmail())), bearer).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void redefinirSenhaTrocaASenhaDeLogin() throws Exception {
+        String bearer = servidor();
+        Usuario prof = Apoio.criar(usuarios, Perfil.PROFESSOR);
+        String url = "/usuarios/" + prof.getId() + "/senha";
+
+        chamar(json(put(url), "{\"senha\":\"nova-senha-123\"}"), bearer).andExpect(status().isNoContent());
+
+        Apoio.login(mvc, new MockHttpSession(), prof.getCpf(), Apoio.SENHA)
+                .andExpect(redirectedUrl("/login?erro"));
+        Apoio.login(mvc, new MockHttpSession(), prof.getCpf(), "nova-senha-123")
+                .andExpect(status().is3xxRedirection())
+                .andExpect(result -> assertThat(result.getResponse().getRedirectedUrl()).doesNotContain("erro"));
+    }
+
+    @Test
+    void redefinirSenhaValidaOsDados() throws Exception {
+        String bearer = servidor();
+        String url = "/usuarios/" + Apoio.criar(usuarios, Perfil.PROFESSOR).getId() + "/senha";
+        chamar(json(put(url), "{\"senha\":\"curta\"}"), bearer).andExpect(status().isBadRequest());
+        chamar(json(put(url), "{}"), bearer).andExpect(status().isBadRequest());
+        chamar(json(put(url), "{\"senha\":\"" + "x".repeat(73) + "\"}"), bearer).andExpect(status().isBadRequest());
+        chamar(json(put("/usuarios/" + UUID.randomUUID() + "/senha"), "{\"senha\":\"nova-senha-123\"}"), bearer)
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void redefinirSenhaExigeServidor() throws Exception {
+        Usuario alvo = Apoio.criar(usuarios, Perfil.PROFESSOR);
+        String url = "/usuarios/" + alvo.getId() + "/senha";
+        String corpo = "{\"senha\":\"nova-senha-123\"}";
+
+        mvc.perform(json(put(url), corpo)).andExpect(status().isUnauthorized());
+        for (Perfil p : List.of(Perfil.ALUNO, Perfil.PROFESSOR)) {
+            chamar(json(put(url), corpo), Apoio.bearer(mvc, Apoio.criar(usuarios, p)))
+                    .andExpect(status().isForbidden());
+        }
+        // A senha continua a antiga: nada foi alterado pelos pedidos negados.
+        Apoio.login(mvc, new MockHttpSession(), alvo.getCpf(), Apoio.SENHA)
+                .andExpect(result -> assertThat(result.getResponse().getRedirectedUrl()).doesNotContain("erro"));
     }
 
     @Test

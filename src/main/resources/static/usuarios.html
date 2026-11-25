@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Usuários · IF Conect</title>
+    <link rel="icon" type="image/png" href="img/favicon.png">
+    <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+    <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="fonts/montserrat-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/usuarios.css">
+</head>
+<body class="sem-sessao">
+<div class="layout">
+    <div class="overlay" id="overlay" hidden></div>
+    <aside class="lateral" id="lateral">
+        <a class="marca" href="usuarios.html">
+            <span class="selo-logo"><img src="img/logo-simbolo.png" alt="" width="32" height="32"></span>
+            <span>IF <span>Conect</span></span>
+        </a>
+        <p class="area">Área da secretaria</p>
+        <nav class="menu">
+            <a href="usuarios.html" class="ativo" aria-current="page">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14.5A6.5 6.5 0 0 1 21.5 20"/></svg>
+                <span>Usuários</span>
+            </a>
+        </nav>
+        <div class="ajuda">
+            <strong>Gestão de usuários</strong>
+            <span>Cadastre professores e servidores e cuide dos acessos.</span>
+        </div>
+        <div class="usuario">
+            <span class="avatar" id="usuario-iniciais"></span>
+            <div class="usuario-info">
+                <strong id="usuario-nome"></strong>
+                <small id="usuario-papel"></small>
+            </div>
+            <button type="button" class="btn-icone" id="btn-sair" title="Sair" aria-label="Sair">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+            </button>
+        </div>
+    </aside>
+
+    <div class="principal">
+        <header class="barra-topo">
+            <a class="topo-logo" href="usuarios.html" aria-label="IF Conect, início"><img src="img/logo-simbolo.png" alt="" width="36" height="36"></a>
+            <h1 id="titulo-pagina">Usuários</h1>
+            <span class="hoje" id="hoje"></span>
+            <button type="button" class="btn-menu" id="btn-menu" aria-label="Abrir menu" aria-controls="lateral" aria-expanded="false">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+        </header>
+
+        <div id="aviso" class="aviso" role="alert" hidden></div>
+
+        <main id="app" class="conteudo">
+            <p class="muted carregando carregando-pagina">Verificando acesso</p>
+        </main>
+
+        <footer class="rodape">
+            <span>Sessão protegida por login</span>
+            <span>IF Conect · Gestão de usuários</span>
+        </footer>
+    </div>
+</div>
+
+<script src="ifsistem-sso.js"></script>
+<script src="js/usuarios.js"></script>
+</body>
+</html>

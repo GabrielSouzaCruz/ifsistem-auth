@@ -53,10 +53,7 @@ public class UsuarioService {
     public Usuario criar(CriarUsuario d, Perfil perfil) {
         if (vazio(d.nome()) || vazio(d.cpf()) || vazio(d.email()) || vazio(d.matricula()) || vazio(d.senha()))
             throw erro(HttpStatus.BAD_REQUEST, "Preencha todos os campos obrigatórios");
-        if (d.senha().length() < SENHA_MINIMA)
-            throw erro(HttpStatus.BAD_REQUEST, "A senha deve ter ao menos " + SENHA_MINIMA + " caracteres");
-        if (d.senha().getBytes(StandardCharsets.UTF_8).length > SENHA_MAXIMA_BYTES)
-            throw erro(HttpStatus.BAD_REQUEST, "A senha é longa demais (máximo de 72 caracteres)");
+        validarSenha(d.senha());
         if (!Cpf.valido(d.cpf()))
             throw erro(HttpStatus.BAD_REQUEST, "CPF inválido");
         String cpf = Cpf.normalizar(d.cpf());
@@ -110,6 +107,22 @@ public class UsuarioService {
             naoAlterarASiMesmo(id, logado);
         u.definirAtivo(ativo);
         return Resposta.de(repository.save(u));
+    }
+
+    public void redefinirSenha(UUID id, String senha) {
+        Usuario u = existente(id);
+        if (vazio(senha))
+            throw erro(HttpStatus.BAD_REQUEST, "Informe a nova senha");
+        validarSenha(senha);
+        u.redefinirSenha(encoder.encode(senha));
+        repository.save(u);
+    }
+
+    private static void validarSenha(String senha) {
+        if (senha.length() < SENHA_MINIMA)
+            throw erro(HttpStatus.BAD_REQUEST, "A senha deve ter ao menos " + SENHA_MINIMA + " caracteres");
+        if (senha.getBytes(StandardCharsets.UTF_8).length > SENHA_MAXIMA_BYTES)
+            throw erro(HttpStatus.BAD_REQUEST, "A senha é longa demais (máximo de 72 caracteres)");
     }
 
     public void excluir(UUID id, UUID logado) {

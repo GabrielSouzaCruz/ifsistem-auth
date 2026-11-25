@@ -23,6 +23,10 @@ public final class UsuarioDtos {
                             Perfil perfil) {
     }
 
+    /** PUT /usuarios/{id}/senha: a secretaria digita a nova senha. */
+    public record RedefinirSenha(String senha) {
+    }
+
     public record AlterarAtivo(Boolean ativo) {
     }
 
