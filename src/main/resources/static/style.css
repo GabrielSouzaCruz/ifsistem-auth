@@ -353,3 +353,10 @@ details.cursada summary { cursor: pointer; font-size: 14px; }
 .anexos li .anexo-motivo { flex-basis: 100%; margin: 0; }
 .anexos li .aviso-anexo { color: var(--erro-texto); font-weight: 600; }
 .acoes-anexo { align-items: center; flex-wrap: wrap; }
+
+/* Link "Portal IFSISTEM" no topo do menu e secoes do menu unificado */
+.voltar-portal[hidden] { display: none; }
+.voltar-portal { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; font-weight: 600; text-decoration: none; }
+.lateral .voltar-portal { color: #fff; opacity: .85; padding: .5rem 0; }
+.lateral .voltar-portal:hover { opacity: 1; }
+.menu-secao + .menu-secao .area { margin-top: 1.25rem; }

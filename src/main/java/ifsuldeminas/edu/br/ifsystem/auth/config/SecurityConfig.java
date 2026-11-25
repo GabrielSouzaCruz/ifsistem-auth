@@ -123,7 +123,7 @@ class SecurityConfig {
     @Order(3)
     SecurityFilterChain paginas(HttpSecurity http) throws Exception {
         return http.authorizeHttpRequests(a -> a
-                        .requestMatchers("/", "/login", "/cadastro", "/health", "/error",
+                        .requestMatchers("/", "/login", "/cadastro", "/health", "/config", "/error",
                                 "/style.css", "/login.js", "/fonts/**", "/img/**", "/favicon.ico",
                                 "/ifsistem-sso.js", "/exemplo-cliente.html",
                                 "/usuarios.html", "/js/**", "/css/**").permitAll()

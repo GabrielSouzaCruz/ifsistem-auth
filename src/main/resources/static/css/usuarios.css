@@ -131,3 +131,12 @@ td .btn { white-space: nowrap; }
     .aviso { margin: 1.25rem 2rem 0; max-width: 1056px; }
     th, td { padding: .8rem 1.5rem; }
 }
+
+/* ---------- Menu unificado (secoes vindas de /config) na gaveta do celular ---------- */
+#menus { display: block; }
+@media (max-width: 860px) {
+    #menus { grid-column: 1 / -1; }
+    .lateral #menus .area { display: block; margin: 1rem .5rem .4rem; }
+    #menus .menu { flex-direction: column; flex-wrap: nowrap; }
+    .lateral .voltar-portal { grid-column: 1 / -1; }
+}
