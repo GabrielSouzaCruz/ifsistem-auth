@@ -158,6 +158,31 @@ class UsuariosApiTest {
     }
 
     @Test
+    void redefinirSenhaEInativarRevogamORefreshToken() throws Exception {
+        String bearer = servidor();
+        for (String acao : List.of("senha", "ativo")) {
+            Usuario u = Apoio.criar(usuarios, Perfil.PROFESSOR);
+            String refresh = Apoio.campo(Apoio.tokens(mvc, new MockHttpSession(), u.getCpf()), "refresh_token");
+            String url = "/usuarios/" + u.getId() + "/" + acao;
+            if (acao.equals("senha"))
+                chamar(json(put(url), "{\"senha\":\"nova-senha-123\"}"), bearer).andExpect(status().isNoContent());
+            else
+                chamar(json(patch(url), "{\"ativo\":false}"), bearer).andExpect(status().isOk());
+            Apoio.renovar(mvc, refresh).andExpect(status().isBadRequest());
+        }
+    }
+
+    @Test
+    void ativarNaoRevogaSessoes() throws Exception {
+        String bearer = servidor();
+        Usuario u = Apoio.criar(usuarios, Perfil.PROFESSOR);
+        String refresh = Apoio.campo(Apoio.tokens(mvc, new MockHttpSession(), u.getCpf()), "refresh_token");
+        chamar(json(patch("/usuarios/" + u.getId() + "/ativo"), "{\"ativo\":true}"), bearer)
+                .andExpect(status().isOk());
+        Apoio.renovar(mvc, refresh).andExpect(status().isOk());
+    }
+
+    @Test
     void redefinirSenhaValidaOsDados() throws Exception {
         String bearer = servidor();
         String url = "/usuarios/" + Apoio.criar(usuarios, Perfil.PROFESSOR).getId() + "/senha";
