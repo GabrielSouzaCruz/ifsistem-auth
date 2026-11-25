@@ -249,8 +249,25 @@ class FluxoOidcTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Autowired
+    private ifsuldeminas.edu.br.ifsystem.auth.config.AuthProperties props;
+
     @Test
-    void ssoSegundaAutorizacaoNaMesmaSessaoNaoPedeSenha() throws Exception {
+    void clienteChavesRegistradoECorsLiberaVercelELocalhost() throws Exception {
+        var chaves = props.clientes().stream().filter(c -> c.clientId().equals("chaves")).findFirst().orElseThrow();
+        assertThat(chaves.redirectUris()).containsExactlyInAnyOrder(
+                "https://chaves-ifsistem.vercel.app/callback.html", "http://localhost:5173/callback.html");
+        assertThat(chaves.postLogoutRedirectUris()).containsExactlyInAnyOrder(
+                "https://chaves-ifsistem.vercel.app/", "http://localhost:5173/");
+        for (String origem : new String[]{"https://chaves-ifsistem.vercel.app", "http://localhost:5173"})
+            mvc.perform(options("/oauth2/token").header("Origin", origem)
+                            .header("Access-Control-Request-Method", "POST"))
+                    .andExpect(status().isOk())
+                    .andExpect(header().string("Access-Control-Allow-Origin", origem));
+    }
+
+    @Test
+    void ssoSegundaAutorizacaoNaMesmaSessaoNaoPedeSenha()throws Exception {
         MockHttpSession sessao = new MockHttpSession();
         Apoio.tokens(mvc, sessao, Apoio.criar(usuarios, Perfil.ALUNO).getCpf());
         mvc.perform(get(URI.create(Apoio.urlAuthorize())).session(sessao).accept(MediaType.TEXT_HTML))
