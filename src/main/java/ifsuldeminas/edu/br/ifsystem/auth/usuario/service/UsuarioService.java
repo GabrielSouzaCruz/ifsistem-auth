@@ -10,6 +10,7 @@ import ifsuldeminas.edu.br.ifsystem.auth.usuario.domain.StatusUsuario;
 import ifsuldeminas.edu.br.ifsystem.auth.usuario.domain.Usuario;
 import ifsuldeminas.edu.br.ifsystem.auth.usuario.repository.UsuarioRepository;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -30,8 +31,10 @@ public class UsuarioService {
 
     private final UsuarioRepository repository;
     private final PasswordEncoder encoder;
+    private final JdbcOperations jdbc;
 
-    public UsuarioService(UsuarioRepository repository, PasswordEncoder encoder) {
+    public UsuarioService(UsuarioRepository repository, PasswordEncoder encoder, JdbcOperations jdbc) {
+        this.jdbc = jdbc;
         this.repository = repository;
         this.encoder = encoder;
     }
@@ -53,10 +56,7 @@ public class UsuarioService {
     public Usuario criar(CriarUsuario d, Perfil perfil) {
         if (vazio(d.nome()) || vazio(d.cpf()) || vazio(d.email()) || vazio(d.matricula()) || vazio(d.senha()))
             throw erro(HttpStatus.BAD_REQUEST, "Preencha todos os campos obrigatórios");
-        if (d.senha().length() < SENHA_MINIMA)
-            throw erro(HttpStatus.BAD_REQUEST, "A senha deve ter ao menos " + SENHA_MINIMA + " caracteres");
-        if (d.senha().getBytes(StandardCharsets.UTF_8).length > SENHA_MAXIMA_BYTES)
-            throw erro(HttpStatus.BAD_REQUEST, "A senha é longa demais (máximo de 72 caracteres)");
+        validarSenha(d.senha());
         if (!Cpf.valido(d.cpf()))
             throw erro(HttpStatus.BAD_REQUEST, "CPF inválido");
         String cpf = Cpf.normalizar(d.cpf());
@@ -109,7 +109,32 @@ public class UsuarioService {
         if (!ativo)
             naoAlterarASiMesmo(id, logado);
         u.definirAtivo(ativo);
-        return Resposta.de(repository.save(u));
+        Resposta r = Resposta.de(repository.save(u));
+        if (!ativo)
+            revogarSessoes(id);
+        return r;
+    }
+
+    public void redefinirSenha(UUID id, String senha) {
+        Usuario u = existente(id);
+        if (vazio(senha))
+            throw erro(HttpStatus.BAD_REQUEST, "Informe a nova senha");
+        validarSenha(senha);
+        u.redefinirSenha(encoder.encode(senha));
+        repository.save(u);
+        revogarSessoes(id);
+    }
+
+    /** Apaga as autorizacoes do usuario: o refresh token deixa de renovar (o access token ja emitido vale ate vencer, 1h). */
+    private void revogarSessoes(UUID id) {
+        jdbc.update("DELETE FROM oauth2_authorization WHERE principal_name = ?", id.toString());
+    }
+
+    private static void validarSenha(String senha) {
+        if (senha.length() < SENHA_MINIMA)
+            throw erro(HttpStatus.BAD_REQUEST, "A senha deve ter ao menos " + SENHA_MINIMA + " caracteres");
+        if (senha.getBytes(StandardCharsets.UTF_8).length > SENHA_MAXIMA_BYTES)
+            throw erro(HttpStatus.BAD_REQUEST, "A senha é longa demais (máximo de 72 caracteres)");
     }
 
     public void excluir(UUID id, UUID logado) {

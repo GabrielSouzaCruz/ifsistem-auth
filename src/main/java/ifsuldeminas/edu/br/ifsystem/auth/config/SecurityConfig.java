@@ -125,7 +125,8 @@ class SecurityConfig {
         return http.authorizeHttpRequests(a -> a
                         .requestMatchers("/", "/login", "/cadastro", "/health", "/error",
                                 "/style.css", "/login.js", "/fonts/**", "/img/**", "/favicon.ico",
-                                "/ifsistem-sso.js", "/exemplo-cliente.html").permitAll()
+                                "/ifsistem-sso.js", "/exemplo-cliente.html",
+                                "/usuarios.html", "/js/**", "/css/**").permitAll()
                         .anyRequest().authenticated())
                 .formLogin(f -> f.loginPage("/login").usernameParameter("cpf").passwordParameter("senha")
                         .failureUrl("/login?erro").defaultSuccessUrl("/"))

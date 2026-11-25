@@ -3,6 +3,7 @@ package ifsuldeminas.edu.br.ifsystem.auth.usuario.api;
 import ifsuldeminas.edu.br.ifsystem.auth.usuario.api.UsuarioDtos.AlterarAtivo;
 import ifsuldeminas.edu.br.ifsystem.auth.usuario.api.UsuarioDtos.Atualizar;
 import ifsuldeminas.edu.br.ifsystem.auth.usuario.api.UsuarioDtos.CriarPorSecretaria;
+import ifsuldeminas.edu.br.ifsystem.auth.usuario.api.UsuarioDtos.RedefinirSenha;
 import ifsuldeminas.edu.br.ifsystem.auth.usuario.api.UsuarioDtos.Resposta;
 import ifsuldeminas.edu.br.ifsystem.auth.usuario.domain.Perfil;
 import ifsuldeminas.edu.br.ifsystem.auth.usuario.service.UsuarioService;
@@ -61,6 +62,13 @@ public class UsuarioController {
         if (dados.ativo() == null)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Campo ativo obrigatório");
         return service.alterarAtivo(id, dados.ativo(), UUID.fromString(logado.getName()));
+    }
+
+    /** Define uma nova senha (digitada pela secretaria); nao exige a senha anterior. */
+    @PutMapping("/{id}/senha")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void redefinirSenha(@PathVariable UUID id, @RequestBody RedefinirSenha dados) {
+        service.redefinirSenha(id, dados.senha());
     }
 
     /** Exclusao logica: o id continua existindo porque os outros sistemas o referenciam. */
