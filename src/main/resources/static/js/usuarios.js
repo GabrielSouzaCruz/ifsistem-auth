@@ -187,7 +187,14 @@ function desenharLinhas() {
 }
 
 async function carregar() {
-    todos = await api('/usuarios' + (filtroPerfil ? '?perfil=' + encodeURIComponent(filtroPerfil) : ''));
+    // A API e paginada (maximo 100 por pagina); a tela filtra no navegador, entao junta todas as paginas.
+    const base = '/usuarios?size=100&sort=nome' + (filtroPerfil ? '&perfil=' + encodeURIComponent(filtroPerfil) : '');
+    let pagina = 0, r;
+    todos = [];
+    do {
+        r = await api(base + '&page=' + pagina++);
+        todos.push(...r.conteudo);
+    } while (pagina < r.totalPaginas);
     todos.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
     desenharLinhas();
 }
@@ -287,7 +294,7 @@ function novoUsuario() {
             if (!v('nome') || !v('cpf') || !v('email') || !senha) throw new Error('Preencha todos os campos.');
             validarSenha(senha);
             await aplicar(() => api('/usuarios', { method: 'POST', json: {
-                nome: v('nome'), cpf: v('cpf'), email: v('email'), senha, perfil: v('perfil')
+                nome: v('nome'), cpf: v('cpf'), email: v('email'), senhaInicial: senha, perfil: v('perfil')
             } }), 'Usuário criado.');
         }
     });
@@ -493,7 +500,7 @@ function telaErroLogin(mensagem) {
     }
     const u = IfsistemSSO.usuario();
     if (!u) return IfsistemSSO.login();
-    if (u.perfil !== 'SERVIDOR') return telaRestrita();
+    if (u.perfil !== 'SERVIDOR' && u.perfil !== 'ADMINISTRADOR') return telaRestrita();
     eu = u;
     montarMoldura(u, await carregarConfig());
     montarTela();

@@ -3,6 +3,7 @@ package ifsuldeminas.edu.br.ifsystem.auth.usuario.service;
 import ifsuldeminas.edu.br.ifsystem.auth.usuario.api.UsuarioDtos.Atualizar;
 import ifsuldeminas.edu.br.ifsystem.auth.usuario.api.UsuarioDtos.CriarPorSecretaria;
 import ifsuldeminas.edu.br.ifsystem.auth.usuario.api.UsuarioDtos.CriarUsuario;
+import ifsuldeminas.edu.br.ifsystem.auth.usuario.api.UsuarioDtos.Pagina;
 import ifsuldeminas.edu.br.ifsystem.auth.usuario.api.UsuarioDtos.Resposta;
 import ifsuldeminas.edu.br.ifsystem.auth.usuario.domain.Cpf;
 import ifsuldeminas.edu.br.ifsystem.auth.usuario.domain.Perfil;
@@ -16,7 +17,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -73,14 +77,53 @@ public class UsuarioService {
         if (d.perfil() != Perfil.PROFESSOR && d.perfil() != Perfil.SERVIDOR)
             throw erro(HttpStatus.BAD_REQUEST, "Perfil deve ser PROFESSOR ou SERVIDOR");
         String matricula = d.perfil().name().substring(0, 3) + "-" + Cpf.normalizar(d.cpf());
-        return criar(new CriarUsuario(d.nome(), d.cpf(), d.email(), matricula, d.senha()), d.perfil());
+        return criar(new CriarUsuario(d.nome(), d.cpf(), d.email(), matricula, d.senhaInicial()), d.perfil());
     }
 
-    /** Excluidos nao aparecem na listagem. */
-    public List<Resposta> listar(Perfil perfil) {
-        return (perfil == null ? repository.findAll() : repository.findByPerfil(perfil)).stream()
+    static final int TAMANHO_PADRAO = 20;
+    static final int TAMANHO_MAXIMO = 100;
+
+    /**
+     * Busca paginada, ordenada por nome. Excluidos nunca aparecem. {@code q} procura em parte do nome (sem
+     * diferenciar maiusculas nem acentos) ou, quando so tem digitos/pontuacao de CPF, em parte do CPF.
+     * O filtro e feito em memoria: a base e pequena (uma instituicao) e assim a busca sem acento
+     * funciona igual no PostgreSQL e no H2 dos testes.
+     */
+    public Pagina<Resposta> listar(Perfil perfil, Boolean ativo, String cpf, String q, Integer pagina,
+                                   Integer tamanho, String sort) {
+        if (sort != null && !sort.isBlank() && !sort.equals("nome"))
+            throw erro(HttpStatus.BAD_REQUEST, "sort aceita apenas: nome");
+        int pag = pagina == null ? 0 : pagina;
+        int tam = tamanho == null ? TAMANHO_PADRAO : tamanho;
+        if (pag < 0)
+            throw erro(HttpStatus.BAD_REQUEST, "page deve ser 0 ou maior");
+        if (tam < 1)
+            throw erro(HttpStatus.BAD_REQUEST, "size deve ser 1 ou maior");
+        tam = Math.min(tam, TAMANHO_MAXIMO);
+
+        String cpfExato = vazio(cpf) ? null : Cpf.normalizar(cpf);
+        String termo = vazio(q) ? null : semAcento(q.trim());
+        String termoDigitos = termo == null ? null : termo.replaceAll("[.\\-\\s]", "");
+        boolean buscaPorCpf = termoDigitos != null && !termoDigitos.isEmpty() && termoDigitos.matches("\\d+");
+
+        List<Usuario> achados = (perfil == null ? repository.findAll() : repository.findByPerfil(perfil)).stream()
                 .filter(u -> u.getStatus() != StatusUsuario.EXCLUIDO)
+                .filter(u -> ativo == null || u.isAtivo() == ativo)
+                .filter(u -> cpfExato == null || u.getCpf().equals(cpfExato))
+                .filter(u -> termo == null
+                        || (buscaPorCpf ? u.getCpf().contains(termoDigitos) : semAcento(u.getNome()).contains(termo)))
+                .sorted(Comparator.comparing((Usuario u) -> semAcento(u.getNome())).thenComparing(Usuario::getId))
+                .toList();
+
+        long total = achados.size();
+        int de = (int) Math.min((long) pag * tam, total);
+        List<Resposta> conteudo = achados.subList(de, (int) Math.min((long) de + tam, total)).stream()
                 .map(Resposta::de).toList();
+        return new Pagina<>(conteudo, pag, tam, total, (int) ((total + tam - 1) / tam));
+    }
+
+    private static String semAcento(String texto) {
+        return Normalizer.normalize(texto, Normalizer.Form.NFD).replaceAll("\\p{M}", "").toLowerCase(Locale.ROOT);
     }
 
     public Resposta buscar(UUID id) {
@@ -121,6 +164,19 @@ public class UsuarioService {
             throw erro(HttpStatus.BAD_REQUEST, "Informe a nova senha");
         validarSenha(senha);
         u.redefinirSenha(encoder.encode(senha));
+        repository.save(u);
+        revogarSessoes(id);
+    }
+
+    /** O proprio usuario troca a senha; a senha atual errada da 400 (nao 401, para o front nao deslogar). */
+    public void trocarSenha(UUID id, String senhaAtual, String novaSenha) {
+        Usuario u = existente(id);
+        if (vazio(senhaAtual) || vazio(novaSenha))
+            throw erro(HttpStatus.BAD_REQUEST, "Informe a senha atual e a nova senha");
+        if (!encoder.matches(senhaAtual, u.getSenhaHash()))
+            throw erro(HttpStatus.BAD_REQUEST, "Senha atual incorreta");
+        validarSenha(novaSenha);
+        u.redefinirSenha(encoder.encode(novaSenha));
         repository.save(u);
         revogarSessoes(id);
     }

@@ -95,17 +95,19 @@ class SecurityConfig {
                 .build();
     }
 
-    /** API de gestao: so SERVIDOR, com o access token do proprio auth. */
+    /** API de gestao (SERVIDOR e ADMINISTRADOR) e /me (qualquer perfil), com o access token do proprio auth. */
     @Bean
     @Order(2)
     SecurityFilterChain api(HttpSecurity http, UsuarioService usuarios) throws Exception {
-        return http.securityMatcher("/usuarios", "/usuarios/**")
+        return http.securityMatcher("/usuarios", "/usuarios/**", "/me", "/me/**")
                 .cors(Customizer.withDefaults())
                 .csrf(c -> c.disable())
                 // Sem trocar o id da sessao de login quando o cookie vem junto: quebraria o sid do logout OIDC.
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                         .sessionFixation(f -> f.none()))
-                .authorizeHttpRequests(a -> a.anyRequest().hasRole(Perfil.SERVIDOR.name()))
+                .authorizeHttpRequests(a -> a
+                        .requestMatchers("/me", "/me/**").authenticated()
+                        .anyRequest().hasAnyRole(Perfil.SERVIDOR.name(), Perfil.ADMINISTRADOR.name()))
                 .oauth2ResourceServer(rs -> rs
                         .jwt(j -> j.jwtAuthenticationConverter(usuarioDoToken(usuarios)))
                         .authenticationEntryPoint((req, res, ex) ->
@@ -128,7 +130,8 @@ class SecurityConfig {
                         .requestMatchers("/", "/login", "/cadastro", "/health", "/config", "/error",
                                 "/style.css", "/login.js", "/fonts/**", "/img/**", "/favicon.ico",
                                 "/ifsistem-sso.js", "/exemplo-cliente.html",
-                                "/usuarios.html", "/js/**", "/css/**").permitAll()
+                                "/usuarios.html", "/js/**", "/css/**",
+                                "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated())
                 .formLogin(f -> f.loginPage("/login").usernameParameter("cpf").passwordParameter("senha")
                         .failureUrl("/login?erro").defaultSuccessUrl("/"))
@@ -161,7 +164,7 @@ class SecurityConfig {
         cors.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         for (String caminho : List.of("/oauth2/token", "/oauth2/revoke", "/oauth2/jwks", "/userinfo",
-                "/.well-known/**", "/usuarios", "/usuarios/**"))
+                "/.well-known/**", "/usuarios", "/usuarios/**", "/me", "/me/**"))
             source.registerCorsConfiguration(caminho, cors);
         return source;
     }

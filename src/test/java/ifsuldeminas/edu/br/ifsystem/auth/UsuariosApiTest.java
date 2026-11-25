@@ -93,7 +93,7 @@ class UsuariosApiTest {
         String bearer = servidor();
         String cpf = Apoio.cpf();
         String criado = chamar(json(post("/usuarios"), """
-                {"cpf":"%s","nome":"Prof Teste","email":"%s","senha":"%s","perfil":"PROFESSOR"}
+                {"cpf":"%s","nome":"Prof Teste","email":"%s","senhaInicial":"%s","perfil":"PROFESSOR"}
                 """.formatted(cpf, Apoio.email(), Apoio.SENHA)), bearer)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.perfil").value("PROFESSOR"))
@@ -105,7 +105,7 @@ class UsuariosApiTest {
         chamar(get(url), bearer).andExpect(status().isOk()).andExpect(jsonPath("$.cpf").value(cpf));
         String lista = chamar(get("/usuarios?perfil=PROFESSOR"), bearer).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        assertThat(JsonPath.<List<String>>read(lista, "$[*].perfil")).containsOnly("PROFESSOR");
+        assertThat(JsonPath.<List<String>>read(lista, "$.conteudo[*].perfil")).containsOnly("PROFESSOR");
 
         chamar(json(put(url), "{\"nome\":\"Novo Nome\",\"email\":\"%s\",\"perfil\":\"SERVIDOR\"}"
                 .formatted(Apoio.email())), bearer)
@@ -121,14 +121,14 @@ class UsuariosApiTest {
         chamar(delete(url), bearer).andExpect(status().isNoContent());
         assertThat(repositorio.findByCpf(cpf).orElseThrow().getStatus()).isEqualTo(StatusUsuario.EXCLUIDO);
         lista = chamar(get("/usuarios"), bearer).andReturn().getResponse().getContentAsString();
-        assertThat(JsonPath.<List<String>>read(lista, "$[*].cpf")).doesNotContain(cpf);
+        assertThat(JsonPath.<List<String>>read(lista, "$.conteudo[*].cpf")).doesNotContain(cpf);
     }
 
     @Test
     void validacoesDaApi() throws Exception {
         String bearer = servidor();
         chamar(json(post("/usuarios"), """
-                {"cpf":"%s","nome":"X","email":"%s","senha":"%s","perfil":"ALUNO"}
+                {"cpf":"%s","nome":"X","email":"%s","senhaInicial":"%s","perfil":"ALUNO"}
                 """.formatted(Apoio.cpf(), Apoio.email(), Apoio.SENHA)), bearer)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.erro").value("Perfil deve ser PROFESSOR ou SERVIDOR"));
