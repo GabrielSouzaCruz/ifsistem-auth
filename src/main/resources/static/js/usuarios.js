@@ -366,35 +366,9 @@ function redefinirSenha(u) {
     return abertura;
 }
 
-/* ---------- Menu unificado (GET /config) ---------- */
+/* ---------- Portal ---------- */
 
-const svg = d => `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
-/* Mesmos icones do menu do Aproveitamento; a chave vem de `icone` no /config. */
-const ICONES = {
-    lista: svg('<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>'),
-    livro: svg('<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/>'),
-    chave: svg('<circle cx="8" cy="15" r="4"/><path d="M10.8 12.2L20 3M16 7l3 3"/>'),
-    pessoas: svg('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14.5A6.5 6.5 0 0 1 21.5 20"/>')
-};
-
-/* Se o /config falhar, a tela continua com o proprio item. */
-const CONFIG_PADRAO = {
-    portalUrl: '',
-    menu: [{ titulo: 'Área da secretaria', itens: [{ nome: 'Usuários', icone: 'pessoas', url: '/usuarios.html', perfis: ['SERVIDOR'] }] }]
-};
-
-async function carregarConfig() {
-    try {
-        const r = await fetch('/config');
-        if (!r.ok) return CONFIG_PADRAO;
-        const c = await r.json();
-        return { portalUrl: c.portalUrl || '', menu: Array.isArray(c.menu) ? c.menu : [] };
-    } catch (e) {
-        return CONFIG_PADRAO;
-    }
-}
-
-/* So http(s) e caminhos relativos viram link; qualquer outra coisa (ex.: javascript:) e descartada. */
+/* So http(s) vira link; qualquer outra coisa (ex.: javascript:) e descartada. */
 function urlSegura(texto) {
     try {
         const u = new URL(texto, location.href);
@@ -402,27 +376,22 @@ function urlSegura(texto) {
     } catch (e) { return null; }
 }
 
-/* O item e o da pagina atual se aponta para esta mesma origem e caminho. */
-const ehPaginaAtual = u => u.origin === location.origin && u.pathname === location.pathname;
+/* O menu e fixo no HTML ("Usuarios"); o config so traz a URL do portal. Se falhar, o link fica escondido. */
+async function carregarConfig() {
+    try {
+        const r = await fetch('/config');
+        if (!r.ok) return { portalUrl: '' };
+        const c = await r.json();
+        return { portalUrl: c.portalUrl || '' };
+    } catch (e) {
+        return { portalUrl: '' };
+    }
+}
 
-function montarMenu(config, perfil) {
+function montarMenu(config) {
     const portal = urlSegura(config.portalUrl);
     const voltar = $('voltar-portal');
     if (portal && config.portalUrl.trim() !== '#') { voltar.href = portal.href; voltar.hidden = false; }
-
-    $('menus').innerHTML = config.menu.map(secao => {
-        const itens = (secao.itens || []).filter(i => (!i.perfis || !i.perfis.length || i.perfis.includes(perfil)) && urlSegura(i.url));
-        if (!itens.length) return '';
-        return `<div class="menu-secao">
-            <p class="area">${esc(secao.titulo)}</p>
-            <nav class="menu" aria-label="${esc(secao.titulo)}">${itens.map(i => {
-                const u = urlSegura(i.url);
-                const ativo = ehPaginaAtual(u);
-                // Mesma aba: sem target. Hash e mantido no href para o Aproveitamento abrir a tela certa.
-                return `<a href="${esc(u.href)}"${ativo ? ' class="ativo" aria-current="page"' : ''}>${ICONES[i.icone] || ''}<span>${esc(i.nome)}</span></a>`;
-            }).join('')}</nav>
-        </div>`;
-    }).join('');
 }
 
 /* ---------- Moldura ---------- */
@@ -463,7 +432,7 @@ function montarMoldura(u, config) {
     $('hoje').textContent = agora.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })
         + ' • ' + agora.toLocaleDateString('pt-BR', { weekday: 'long' });
     $('btn-sair').onclick = () => IfsistemSSO.logout();
-    montarMenu(config, u.perfil);
+    montarMenu(config);
     menuGaveta();
 }
 

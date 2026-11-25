@@ -4,9 +4,7 @@ import ifsuldeminas.edu.br.ifsystem.auth.config.AuthProperties;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
-/** Configuracao publica para as telas do auth: URL do portal e menu unificado (filtrado por perfil no front). */
+/** Configuracao publica para as telas do auth: URL do portal (o menu da tela de usuarios e fixo). */
 @RestController
 public class ConfigController {
     private final AuthProperties props;
@@ -17,9 +15,9 @@ public class ConfigController {
 
     @GetMapping("/config")
     public Config config() {
-        return new Config(props.portalUrl(), props.menu());
+        return new Config(props.portalUrl());
     }
 
-    public record Config(String portalUrl, List<AuthProperties.Secao> menu) {
+    public record Config(String portalUrl) {
     }
 }

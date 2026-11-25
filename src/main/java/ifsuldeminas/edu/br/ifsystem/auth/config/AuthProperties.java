@@ -17,8 +17,7 @@ import java.util.List;
 public record AuthProperties(@NotNull @Pattern(regexp = "https?://.+", message = "defina AUTH_ISSUER com a URL publica") String issuer,
                              @DefaultValue("") String portalUrl,
                              @DefaultValue Rsa rsa,
-                             @NotEmpty List<@Valid Cliente> clientes,
-                             @DefaultValue List<@Valid Secao> menu) {
+                             @NotEmpty List<@Valid Cliente> clientes) {
     public AuthProperties {
         if (issuer != null && issuer.endsWith("/"))
             issuer = issuer.substring(0, issuer.length() - 1);
@@ -33,12 +32,4 @@ public record AuthProperties(@NotNull @Pattern(regexp = "https?://.+", message =
                           @NotNull @DefaultValue List<@NotBlank String> postLogoutRedirectUris) {
     }
 
-    /** Secao do menu unificado (GET /config): titulo e itens. */
-    public record Secao(@NotBlank String titulo, @NotEmpty List<@Valid Item> itens) {
-    }
-
-    /** Item do menu. `icone` e uma chave (lista, livro, chave, pessoas); `perfis` vazio = todos os perfis. */
-    public record Item(@NotBlank String nome, @DefaultValue("") String icone, @NotBlank String url,
-                       @NotNull @DefaultValue List<@NotBlank String> perfis) {
-    }
 }
